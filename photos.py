@@ -1,23 +1,16 @@
 import os
+import sys
 import json
-import logging
 import requests
 from urllib.parse import urljoin, urlparse, parse_qs
 from bs4 import BeautifulSoup
-
-# Configure logging
-logging.basicConfig(
-    filename='scraping.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s:%(message)s'
-)
 
 def scrape_page(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
     except requests.RequestException as e:
-        logging.error(f"Error fetching URL {url}: {e}")
+        print("Error fetching URL {}: {}".format(url, e))
         return None
 
     base_url = url
@@ -70,10 +63,13 @@ def scrape_page(url):
                 scheda_param = query_params.get('scheda', [None])[0]
                 scheda_link = None
                 if scheda_param:
-                    # Use underscore in 'ava_ricerca' as specified in the original instructions?
-                    # The user wrote it previously as "ava_ricerca" but original snippet was "ava-ricerca.php".
-                    # We'll assume "ava_ricerca.php" as per previous instructions or original snippet:
-                    scheda_link = f"https://asacdati.labiennale.org/it/attivita/artivisive/ava-ricerca.php?scheda={scheda_param}"
+                    # Reconstruct URL with only the 'scheda' param
+                    scheda_link = "{}://{}{}?scheda={}".format(
+                        parsed_url.scheme, 
+                        parsed_url.netloc, 
+                        parsed_url.path, 
+                        scheda_param
+                    )
 
                 record['details'].append({
                     'definition': definition_text,
@@ -99,31 +95,39 @@ def scrape_page(url):
     return results
 
 def main():
+    # Parse command line arguments
+    if len(sys.argv) != 3:
+        print("Usage: script.py <start_page> <end_page>")
+        sys.exit(1)
+
+    try:
+        start_page = int(sys.argv[1])
+        end_page = int(sys.argv[2])
+    except ValueError:
+        print("Please provide integer values for start_page and end_page.")
+        sys.exit(1)
+
     # Ensure the output directory exists
     os.makedirs('output', exist_ok=True)
 
-    start_page = 1
-    end_page = 10  # Adjust as needed
-
-    # Base URL without the page parameter
     base_url = "https://asacdati.labiennale.org/it/fondi/fototeca/sem-ricerca.php?cerca=1&p="
 
     for p in range(start_page, end_page + 1):
-        page_url = f"{base_url}{p}"
-        logging.info(f"Scraping page {p}: {page_url}")
+        page_url = "{}{}".format(base_url, p)
+        print("Scraping page {}: {}".format(p, page_url))
         
         data = scrape_page(page_url)
         if data is not None:
             if len(data) > 0:
                 # Save to JSON file
-                output_file = os.path.join('output', f'page_{p}.json')
+                output_file = os.path.join('output', "page_{}.json".format(p))
                 with open(output_file, 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
-                logging.info(f"Page {p} scraped successfully, data saved to {output_file}")
+                print("Page {} scraped successfully, data saved to {}".format(p, output_file))
             else:
-                logging.warning(f"Page {p}: No results found.")
+                print("Page {}: No results found.".format(p))
         else:
-            logging.error(f"Page {p}: Failed to scrape page.")
+            print("Page {}: Failed to scrape page.".format(p))
 
 if __name__ == "__main__":
     main()
