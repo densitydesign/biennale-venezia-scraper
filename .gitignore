@@ -172,3 +172,5 @@ cython_debug/
 /output
 .DS_Store
 /output_imgs
+combined_data.json
+/img_224
