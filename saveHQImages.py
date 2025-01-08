@@ -71,7 +71,7 @@ def download_and_resize_images(json_folder_path):
             # Resize the image
             try:
                 max_dimension = 224
-                image.thumbnail((max_dimension, max_dimension), Image.LANCZOS)
+                image.thumbnail((max_dimension, max_dimension), Image.ANTIALIAS)  # Use ANTIALIAS for compatibility
                 resized_path = os.path.join(resized_folder, f"{c_value}.jpg")
                 image.save(resized_path, "JPEG", quality=80)
                 print(f"  [Resized and Saved] {modified_url} => {resized_path}")
