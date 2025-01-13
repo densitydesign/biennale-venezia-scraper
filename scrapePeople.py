@@ -9,8 +9,6 @@ Requirements:
     - requests >= 2.0
     - beautifulsoup4 >= 4.0
 
-the script can be run after imagesMetadata.py is run
-
 Usage:
     1. Put this script anywhere accessible.
     2. Make sure you have a folder named 'output' with JSON files in it.
@@ -135,8 +133,9 @@ def main():
     processed_person_image = load_processed_person_image(person_image_path)
     processed_person_info = load_processed_person_info(person_info_path)
 
-    # Prepare to process all JSON files in 'output' folder
+    # Get all JSON files in 'output' folder and sort them alphabetically
     json_files = [f for f in os.listdir(OUTPUT_FOLDER) if f.lower().endswith(".json")]
+    json_files.sort()  # Sort in place alphabetically
 
     for json_file in json_files:
         json_path = os.path.join(OUTPUT_FOLDER, json_file)
@@ -153,7 +152,7 @@ def main():
                 print("WARNING: JSON file does not contain a list:", json_path)
                 continue
 
-            # Each item in data has title, titleUrl, imageUrl, details, etc.
+            # Each item in data has title, titleUrl, imageUrl, etc.
             for item in data:
                 title_url = item.get("titleUrl")
                 image_url = item.get("imageUrl")
@@ -167,17 +166,19 @@ def main():
                     continue
 
                 # We'll fetch the page at title_url and parse for persona links
+                print("  Visiting page:", title_url)
                 try:
                     time.sleep(REQUEST_DELAY)  # be kind to the server
                     resp = requests.get(title_url, timeout=10)
                     resp.raise_for_status()
                 except requests.RequestException as e:
-                    print("Error fetching", title_url, "->", e)
+                    print("  Error fetching", title_url, "->", e)
                     continue
 
                 soup = BeautifulSoup(resp.text, "html.parser")
                 # Find all person links
                 people_links = get_person_code_label_and_url(soup, title_url)
+                print("  Found {} people on this page.".format(len(people_links)))
 
                 # For each person found on this page:
                 for (p_code, p_label, p_full_url) in people_links:
@@ -188,6 +189,7 @@ def main():
 
                     # 2) Write to person_info.csv if not done before
                     if p_code not in processed_person_info:
+                        print("  New person found:", p_code, p_label)
                         append_to_csv(person_info_path, [p_code, p_label, p_full_url])
                         processed_person_info[p_code] = (p_label, p_full_url)
 
